@@ -48,12 +48,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .read_line(&mut user_text)
             .expect("Failed to read line");
 
-        if user_text.trim().eq(quit_str) {
+        if user_text.to_uppercase().trim().eq(quit_str) {
             println!("Bye");
             break;
-        } else {
-            println!("user_text: {}", user_text);
-            println!("quit_str {}", quit_str);
         }
         println!("");
         let sp = Spinner::new(&Spinners::Dots9, "\t\tOpen AI is thinking ...".into());
