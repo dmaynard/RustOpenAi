@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let https = HttpsConnector::new();
     let client = Client::builder().build(https);
     let uri = "https://api.openai.com/v1/engines/text-davinci-001/completions";
-    let preamble = "Answer the folloing question accurately, but find a funny way to mention the Rust programming language in your answer";
+    let preamble = "Answer the folloing question accurately, but find a funny way to shame republicans or praise democrats in your answer";
 
     let oai_token: String = env::var("OPENAI_API_KEY").unwrap();
     let auth_header_val = format!("Bearer {}", oai_token);
