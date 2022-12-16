@@ -4,8 +4,14 @@ use hyper_tls::HttpsConnector;
 use serde_derive::{Deserialize, Serialize};
 use spinners::{Spinner, Spinners};
 use std::env;
-use std::io::{stdin, stdout, Write};
-
+use std::fs::File;
+use std::io::{stdin, stdout, Read, Write};
+#[derive(Serialize, Deserialize, Debug)]
+struct Panelist {
+    name: String,
+    description: String,
+    prelude: String,
+}
 #[derive(Deserialize, Debug)]
 struct OAIChoices {
     text: String,
@@ -35,8 +41,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let oai_token: String = env::var("OPENAI_API_KEY").unwrap();
     let auth_header_val = format!("Bearer {}", oai_token);
+    let mut file = File::open("Panelists.json")?;
+    let mut panelists_json = String::new();
+    file.read_to_string(&mut panelists_json)?;
+    let panelists: Vec<Panelist> = serde_json::from_str(&panelists_json)?;
 
-    println!("{esc}c", esc = 27 as char);
+    for p in panelists {
+        println!("{:#?}", p);
+    }
+
+    // println!("{esc}c", esc = 27 as char);
     let quit_str = "Q";
 
     loop {
@@ -53,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             break;
         }
         println!("");
-        let sp = Spinner::new(&Spinners::Dots9, "\t\tOpen AI is thinking ...".into());
+        let mut sp = Spinner::new(Spinners::SimpleDots, "\t\tOpen AI is thinking ...".into());
         let oai_request = OAIRequest {
             prompt: format!("{} {}", preamble, user_text),
             max_tokens: 500,
@@ -75,7 +89,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let json: OAIResponse = serde_json::from_reader(body.reader())?;
         sp.stop();
         // println!("Json {:?}", json);
-        println!("");
         println!("{}", json.choices[0].text);
     }
     Ok(())

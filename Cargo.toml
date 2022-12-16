@@ -1,5 +1,5 @@
 [package]
-name = "RustOpenAi"
+name = "rust_open_ai"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 hyper = {version ="^0.14", features = ["full"]}
 hyper-tls = "^0.5"
-tokio = {verion = "1", features = ["full"]}
+tokio = {version = "1", features = ["full"]}
 serde = "^1"
 serde_derive = "^1"
 serde_json = "^1"
-spinners = "^2"
+spinners = "^4"
