@@ -54,13 +54,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Today we have {} distinguishe panelists", panelists.len());
     println!("They are");
     let mut index = 1;
-    for i in [0..4] {
-        println!("{}: {} ", index, panelists[i][0].name);
+    for i in 0..(panel_size) as usize {
+        println!(
+            "{}: {}, {} ",
+            index, panelists[i].name, panelists[i].description
+        );
         index = index + 1;
     }
     println!(
         "Begin your question with a number or name to ask a specific panelist or Quit to exit"
     );
+    let mut rng = rand::thread_rng();
 
     let quit_str = "QUIT";
 
@@ -79,18 +83,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             break;
         }
         let index = match first_word.parse::<i32>() {
-            Ok(n) => n,
-            Err(_e) => {
-                let mut rng = rand::thread_rng();
-                rng.gen_range(0..panel_size)
-            }
+            Ok(n) => n - 1,
+            Err(_e) => rand::thread_rng().gen_range(0..panel_size),
         };
         println!(" index = {}", index as usize);
         let panelist = &panelists[index as usize];
         println!("");
         let mut sp = Spinner::new(Spinners::SimpleDots, "\t\tOpen AI is thinking ...".into());
         let oai_request = OAIRequest {
-            prompt: format!("{} {}", preamble, user_text),
+            prompt: format!("{} {}", panelist.prelude, user_text),
             max_tokens: 500,
         };
 
