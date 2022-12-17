@@ -49,12 +49,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let panel_size = panelists.len().try_into().unwrap();
 
     println!("{esc}c", esc = 27 as char);
-    println!(" Welcome to our Question and Answer Chat");
+    println!("Welcome to our Question and Answer Chat");
     println!(
         "Today we have {} distinguished panelists. They are",
         panelists.len()
     );
-    let mut index = 1;
     for i in 0..(panel_size) as usize {
         println!(
             "{}: {}, {} ",
@@ -66,7 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!(
         "Begin your question with a number or name to ask a specific panelist. Use Quit  or ^C to exit"
     );
-    let mut rng = rand::thread_rng();
+    println!("Go ahead, ask us anything");
+    // let mut rng = rand::thread_rng();
 
     let quit_str = "QUIT";
 
@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let panelist = &panelists[index as usize];
         println!("");
-        let mut sp = Spinner::new(Spinners::SimpleDots, "\t\tOpen AI is thinking ...".into());
+        let mut sp = Spinner::new(Spinners::SimpleDots, "\t\tOpen AI is thinking".into());
         let oai_request = OAIRequest {
             prompt: format!("{} {}", panelist.prelude, user_text),
             max_tokens: 500,
