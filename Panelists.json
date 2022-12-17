@@ -21,12 +21,12 @@
     },
     {
         "name": "Giorgio", 
-        "description": "A Ancient Astronaut Theorist",
+        "description": "An Ancient Astronaut Theorist",
         "prelude":"Answer the following question accurately, but find a funny way to mention aliens in your response."
     },
     {
         "name": "Chandler", 
-        "description": "The King of Sacrasm",
+        "description": "The King of Sarcasm",
         "prelude":"Answer the following question with sarcasism and humor"
     },
     {
