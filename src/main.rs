@@ -92,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }) {
             Some(n) => n, // A panelists name was detected
             None => match first_word.parse::<usize>() {
-                // See if a number begins the question6 what
+                // See if a number begins the question6 whatwhat is the biggest threat to democracy in the United States?
                 Ok(n) => {
                     if n > 0 && n <= panel_size {
                         n - 1
