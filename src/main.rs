@@ -38,9 +38,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let https = HttpsConnector::new();
     let client = Client::builder().build(https);
     let uri = "https://api.openai.com/v1/engines/text-davinci-001/completions";
-    let preamble = "Answer the following question accurately, but find a funny way to shame republicans or praise democrats in your answer";
+    let oai_token: String;
+    let oai_token_key = "OPENAI_API_KEY";
+    println!("{esc}c", esc = 27 as char);
 
-    let oai_token: String = env::var("OPENAI_API_KEY").unwrap();
+    match env::var(oai_token_key) {
+        Ok(val) => oai_token = val,
+        Err(e) => {
+            oai_token = "None".to_string();
+            // break;
+        }
+    }
+
     let auth_header_val = format!("Bearer {}", oai_token);
     let mut file = File::open("Panelists.json")?;
     let mut panelists_json = String::new();
@@ -48,7 +57,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let panelists: Vec<Panelist> = serde_json::from_str(&panelists_json)?;
     let panel_size = panelists.len().try_into().unwrap();
 
-    println!("{esc}c", esc = 27 as char);
     println!("Welcome to our Question and Answer Chat");
     println!(
         "Today we have {} distinguished panelists. They are",
@@ -65,12 +73,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!(
         "Begin your question with a number or name to ask a specific panelist. Use Quit  or ^C to exit"
     );
-    println!("Go ahead, ask us anything");
+    println!("Go ahead, ask us anything ... ");
     // let mut rng = rand::thread_rng();
 
     let quit_str = "QUIT";
 
     loop {
+        if oai_token.eq(&"None".to_string()) {
+            println!("You need to have a valid OpenAi auth token stored in an environment variable named {} to run this application", oai_token_key);
+            println!("see https://openai.com/api/ for details");
+            break;
+        };
         print!("> ");
         stdout().flush().unwrap();
         let mut user_text = String::new();
