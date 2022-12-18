@@ -56,24 +56,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     file.read_to_string(&mut panelists_json)?;
     let panelists: Vec<Panelist> = serde_json::from_str(&panelists_json)?;
     let panel_size = panelists.len().try_into().unwrap();
+    if !oai_token.eq(&"None".to_string()) {
+        print_header(&panelists)
+    };
 
-    println!("Welcome to our Question and Answer Chat");
-    println!(
-        "Today we have {} distinguished panelists. They are",
-        panelists.len()
-    );
-    for i in 0..(panel_size) as usize {
-        println!(
-            "{}: {}, {} ",
-            i + 1,
-            panelists[i].name,
-            panelists[i].description
-        );
-    }
-    println!(
-        "Begin your question with a number or name to ask a specific panelist. Use Quit  or ^C to exit"
-    );
-    println!("Go ahead, ask us anything ... ");
     // let mut rng = rand::thread_rng();
 
     let quit_str = "QUIT";
@@ -141,4 +127,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("{}: {}", panelist.name, &json.choices[0].text[1..]);
     }
     Ok(())
+}
+
+fn print_header(panelists: &Vec<Panelist>) {
+    let panel_size: usize = panelists.len().try_into().unwrap();
+    println!("Welcome to our Question and Answer Chat");
+    println!(
+        "Today we have {} distinguished panelists. They are",
+        panelists.len()
+    );
+    for i in 0..(panel_size) as usize {
+        println!(
+            "{}: {}, {} ",
+            i + 1,
+            panelists[i].name,
+            panelists[i].description
+        );
+    }
+    println!(
+        "Begin your question with a number or name to ask a specific panelist. Use Quit  or ^C to exit"
+    );
+    println!("Go ahead, ask us anything ... ");
 }
