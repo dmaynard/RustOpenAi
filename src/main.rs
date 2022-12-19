@@ -38,24 +38,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let https = HttpsConnector::new();
     let client = Client::builder().build(https);
     let uri = "https://api.openai.com/v1/engines/text-davinci-001/completions";
-    let oai_token: String;
     let oai_token_key = "OPENAI_API_KEY";
+    let no_token = "NoToken";
+    let panelists_file = "Panelists.json";
     println!("{esc}c", esc = 27 as char);
 
-    match env::var(oai_token_key) {
-        Ok(val) => oai_token = val,
-        Err(e) => {
-            oai_token = "None".to_string();
-            // break;
-        }
-    }
+    let oai_token: String = match env::var(oai_token_key) {
+        Ok(val) => val,
+        Err(_e) => no_token.to_string(),
+    };
 
     let auth_header_val = format!("Bearer {}", oai_token);
-    let mut file = File::open("Panelists.json")?;
+    let mut file = match File::open(panelists_file) {
+        Ok(file) => file,
+        Err(_e) => {
+            panic!("No {} file found", panelists_file);
+        }
+    };
     let mut panelists_json = String::new();
     file.read_to_string(&mut panelists_json)?;
-    let panelists: Vec<Panelist> = serde_json::from_str(&panelists_json)?;
-    let panel_size = panelists.len().try_into().unwrap();
+    let panelists: Vec<Panelist> = match serde_json::from_str(&panelists_json) {
+        Ok(pvec) => pvec,
+        Err(_e) => {
+            println!("Error parsing {} file", panelists_file);
+            panic!("Malformed {} file", panelists_file);
+        }
+    };
+    let panel_size = panelists.len();
     if !oai_token.eq(&"None".to_string()) {
         print_header(&panelists)
     };
@@ -65,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let quit_str = "QUIT";
 
     loop {
-        if oai_token.eq(&"None".to_string()) {
+        if oai_token.eq(no_token) {
             println!("You need to have a valid OpenAi auth token stored in an environment variable named {} to run this application", oai_token_key);
             println!("see https://openai.com/api/ for details");
             break;
@@ -77,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         stdin()
             .read_line(&mut user_text)
             .expect("Failed to read line");
-        let first_word = &user_text.split(" ").next().unwrap();
+        let first_word = &user_text.split(' ').next().unwrap();
         // println!("first word is {}", first_word);
         if first_word.to_uppercase().trim().eq(quit_str) {
             println!("Bye");
@@ -100,12 +109,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         rand::thread_rng().gen_range(0..panel_size) as usize
                     }
                 }
-                Err(_e) => rand::thread_rng().gen_range(0..panel_size.try_into().unwrap()),
+                Err(_e) => rand::thread_rng().gen_range(0..panel_size),
             },
         };
 
         let panelist = &panelists[index as usize];
-        println!("");
+        println!();
         let mut sp = Spinner::new(Spinners::SimpleDots, "\t\tOpen AI is thinking".into());
         let oai_request = OAIRequest {
             prompt: format!("{} {}", panelist.prelude, user_text),
@@ -130,20 +139,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 }
 
 fn print_header(panelists: &Vec<Panelist>) {
-    let panel_size: usize = panelists.len().try_into().unwrap();
+    let panel_size: usize = panelists.len();
     println!("Welcome to our Question and Answer Chat");
     println!(
         "Today we have {} distinguished panelists. They are",
         panelists.len()
     );
-    for i in 0..(panel_size) as usize {
-        println!(
-            "{}: {}, {} ",
-            i + 1,
-            panelists[i].name,
-            panelists[i].description
-        );
+    for (i, p) in panelists.iter().enumerate() {
+        println!("{}: {}, {} ", i + 1, p.name, p.description);
     }
+
     println!(
         "Begin your question with a number or name to ask a specific panelist. Use Quit  or ^C to exit"
     );
