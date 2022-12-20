@@ -5,8 +5,7 @@ use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 use spinners::{Spinner, Spinners};
 use std::env;
-use std::fs::File;
-use std::io::{stdin, stdout, Read, Write};
+use std::io::{stdin, stdout, Write};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Panelist {
     name: String,
@@ -35,7 +34,7 @@ struct OAIRequest {
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let panelists: Vec<Panelist> = [
+    let panelists = [
          Panelist {
             name: "Rachel".to_string(), 
             description: "An MSNBC host".to_string(),
@@ -76,13 +75,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             description: "A Software Engineer and a recent convert to the Rust programming language".to_string(),
             prelude: "Answer the following question accurately, but find a funny way to mention the Rust programming language in your response.".to_string(),
         }
-    ].to_vec();
+    ];
     let https = HttpsConnector::new();
     let client = Client::builder().build(https);
     let uri = "https://api.openai.com/v1/engines/text-davinci-001/completions";
     let oai_token_key = "OPENAI_API_KEY";
     let no_token = "NoToken";
-    let panelists_file = "Panelists.json";
     println!("{esc}c", esc = 27 as char);
 
     let oai_token: String = match env::var(oai_token_key) {
@@ -167,7 +165,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
-fn print_header(panelists: &Vec<Panelist>) {
+fn print_header(panelists: &[Panelist]) {
     println!("Welcome to our Question and Answer Chat");
     println!(
         "Today we have {} distinguished panelists. They are",
