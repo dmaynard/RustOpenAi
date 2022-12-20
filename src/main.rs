@@ -7,7 +7,7 @@ use spinners::{Spinner, Spinners};
 use std::env;
 use std::fs::File;
 use std::io::{stdin, stdout, Read, Write};
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Panelist {
     name: String,
     description: String,
@@ -35,49 +35,48 @@ struct OAIRequest {
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let default_panelists = "[
-        {
-            \"name\": \"Rachel\", 
-            \"description\": \"An MSNBC host\",
-            \"prelude\":\"Answer the following question accurately, but find a sarcastic way to shame republicans and praise democrats in your answer.\"
+    let panelists: Vec<Panelist> = [
+         Panelist {
+            name: "Rachel".to_string(), 
+            description: "An MSNBC host".to_string(),
+            prelude: "Answer the following question accurately, but find a sarcastic way to shame republicans and praise democrats in your answer.".to_string(),
         },
-        {
-            \"name\": \"Tucker\", 
-            \"description\": \"A Fox News Host\",
-            \"prelude\":\"Answer the following question with bias, and find a funny way to shame democrats and praise Donald Trump.\"
+        Panelist {
+            name: "Tucker".to_string(), 
+            description: "A Fox News Host".to_string(),
+            prelude: "Answer the following question with bias, and find a funny way to shame democrats and praise Donald Trump.".to_string(),
         },
-        {
-            \"name\": \"Quincy\", 
-            \"description\": \"A QAnon believer\",
-            \"prelude\":\"Answer the following question badly, and find way to include a conspirary theory in your response.\"
+        Panelist {
+            name: "Quincy".to_string(), 
+            description: "A QAnon believer".to_string(),
+            prelude: "Answer the following question badly, and find way to include a conspirary theory in your response.".to_string(),
         },
-        {
-            \"name\": \"Michio\", 
-            \"description\": \"A Physicist\",
-            \"prelude\":\"Answer the following with strict scientific accuracy.\"
+        Panelist {
+            name: "Michio".to_string(), 
+            description: "A Physicist".to_string(),
+            prelude: "Answer the following with strict scientific accuracy.".to_string(),
         },
-        {
-            \"name\": \"Giorgio\", 
-            \"description\": \"An Ancient Astronaut Theorist\",
-            \"prelude\":\"Answer the following question accurately, but find a funny way to mention aliens in your response.\"
+        Panelist {
+            name: "Giorgio".to_string(), 
+            description: "An Ancient Astronaut Theorist".to_string(),
+            prelude: "Answer the following question accurately, but find a funny way to mention aliens in your response.".to_string(),
         },
-        {
-            \"name\": \"Chandler\", 
-            \"description\": \"The King of Sarcasm\",
-            \"prelude\":\"Answer the following question with snarky answers, sarcasism and humor\"
-        },
-        {
-            \"name\": \"Alan\",
-            \"description\": \"A Zen Bhuddist\",
-            \"prelude\": \"Answer with deeply philosophical answers from bhuddism and toaist viewpoints\"
+        Panelist {
+            name: "Chandler".to_string(), 
+            description: "The King of Sarcasm".to_string(),
+            prelude: "Answer the following question with snarky answers, sarcasism and humor".to_string(),
+        },  Panelist  {
+            name: "Alan".to_string(),
+            description: "A Zen Bhuddist".to_string(),
+            prelude: "Answer with deeply philosophical answers from bhuddism and toaist viewpoints".to_string(),
         },
     
-        {
-            \"name\": \"Rusty\", 
-            \"description\": \"A Software Engineer and a recent convert to the Rust programming language\",
-            \"prelude\":\"Answer the following question accurately, but find a funny way to mention the Rust programming language in your response.\"
+        Panelist {
+            name: "Rusty".to_string(), 
+            description: "A Software Engineer and a recent convert to the Rust programming language".to_string(),
+            prelude: "Answer the following question accurately, but find a funny way to mention the Rust programming language in your response.".to_string(),
         }
-    ]";
+    ].to_vec();
     let https = HttpsConnector::new();
     let client = Client::builder().build(https);
     let uri = "https://api.openai.com/v1/engines/text-davinci-001/completions";
@@ -92,22 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     let auth_header_val = format!("Bearer {}", oai_token);
-    let mut file = match File::open(panelists_file) {
-        Ok(file) => file,
-        Err(_e) => {
-            panic!("No {} file found", panelists_file);
-        }
-    };
-    let mut panelists_json = String::new();
-    file.read_to_string(&mut panelists_json)?;
-    let panelists: Vec<Panelist> = match serde_json::from_str(&panelists_json) {
-        Ok(pvec) => pvec,
-        Err(_e) => {
-            println!("Error parsing {} file", panelists_file);
-            // panic!("Malformed {} file", panelists_file);
-            serde_json::from_str(&default_panelists)?
-        }
-    };
+    
     let panel_size = panelists.len();
     if !oai_token.eq(&"None".to_string()) {
         print_header(&panelists)
@@ -131,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .read_line(&mut user_text)
             .expect("Failed to read line");
         let first_word = &user_text.split(' ').next().unwrap();
-        // println!("first word is {}", first_word);
+        // println!("first word is {}".to_string, first_word);
         if first_word.to_uppercase().trim().eq(quit_str) {
             println!("Bye");
             break;
