@@ -35,6 +35,49 @@ struct OAIRequest {
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let default_panelists = "[
+        {
+            \"name\": \"Rachel\", 
+            \"description\": \"An MSNBC host\",
+            \"prelude\":\"Answer the following question accurately, but find a sarcastic way to shame republicans and praise democrats in your answer.\"
+        },
+        {
+            \"name\": \"Tucker\", 
+            \"description\": \"A Fox News Host\",
+            \"prelude\":\"Answer the following question with bias, and find a funny way to shame democrats and praise Donald Trump.\"
+        },
+        {
+            \"name\": \"Quincy\", 
+            \"description\": \"A QAnon believer\",
+            \"prelude\":\"Answer the following question badly, and find way to include a conspirary theory in your response.\"
+        },
+        {
+            \"name\": \"Michio\", 
+            \"description\": \"A Physicist\",
+            \"prelude\":\"Answer the following with strict scientific accuracy.\"
+        },
+        {
+            \"name\": \"Giorgio\", 
+            \"description\": \"An Ancient Astronaut Theorist\",
+            \"prelude\":\"Answer the following question accurately, but find a funny way to mention aliens in your response.\"
+        },
+        {
+            \"name\": \"Chandler\", 
+            \"description\": \"The King of Sarcasm\",
+            \"prelude\":\"Answer the following question with snarky answers, sarcasism and humor\"
+        },
+        {
+            \"name\": \"Alan\",
+            \"description\": \"A Zen Bhuddist\",
+            \"prelude\": \"Answer with deeply philosophical answers from bhuddism and toaist viewpoints\"
+        },
+    
+        {
+            \"name\": \"Rusty\", 
+            \"description\": \"A Software Engineer and a recent convert to the Rust programming language\",
+            \"prelude\":\"Answer the following question accurately, but find a funny way to mention the Rust programming language in your response.\"
+        }
+    ]";
     let https = HttpsConnector::new();
     let client = Client::builder().build(https);
     let uri = "https://api.openai.com/v1/engines/text-davinci-001/completions";
@@ -61,7 +104,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Ok(pvec) => pvec,
         Err(_e) => {
             println!("Error parsing {} file", panelists_file);
-            panic!("Malformed {} file", panelists_file);
+            // panic!("Malformed {} file", panelists_file);
+            serde_json::from_str(&default_panelists)?
         }
     };
     let panel_size = panelists.len();
@@ -79,7 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("see https://openai.com/api/ for details");
             break;
         };
-        print!("> ");
+        print!(">");
         stdout().flush().unwrap();
         let mut user_text = String::new();
 
@@ -135,11 +179,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!();
         println!("{}: {}", panelist.name, &json.choices[0].text[1..]);
     }
+
     Ok(())
 }
 
 fn print_header(panelists: &Vec<Panelist>) {
-    let panel_size: usize = panelists.len();
     println!("Welcome to our Question and Answer Chat");
     println!(
         "Today we have {} distinguished panelists. They are",
