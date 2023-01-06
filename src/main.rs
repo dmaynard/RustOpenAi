@@ -6,11 +6,17 @@ use serde_derive::{Deserialize, Serialize};
 use spinners::{Spinner, Spinners};
 use std::env;
 use std::io::{stdin, stdout, Write};
+#[derive(Debug)]
+struct Query {
+    target: String,
+    question: String,
+}
 #[derive(Serialize, Deserialize, Debug, Clone)]
+
 struct Panelist {
-    name: String,
-    description: String,
-    prelude: String,
+    name: &'static str,
+    description: &'static str,
+    prelude: &'static str,
 }
 #[derive(Deserialize, Debug)]
 struct OAIChoices {
@@ -32,50 +38,53 @@ struct OAIRequest {
     prompt: String,
     max_tokens: u32,
 }
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let panelists = [
+static panelists : [Panelist; 8] = [
          Panelist {
-            name: "Rachel".to_string(), 
-            description: "An MSNBC host".to_string(),
-            prelude: "Answer the following question accurately, but find a sarcastic way to shame republicans and praise democrats in your answer.".to_string(),
+            name: "Rachel", 
+            description: "An MSNBC host",
+            prelude: "Answer the following question accurately, but find a sarcastic way to shame republicans and praise democrats in your answer.",
         },
         Panelist {
-            name: "Tucker".to_string(), 
-            description: "A Fox News Host".to_string(),
-            prelude: "Answer the following question with bias, and find a funny way to shame democrats and praise Donald Trump.".to_string(),
+            name: "Tucker", 
+            description: "A Fox News Host",
+            prelude: "Answer the following question with bias, and find a funny way to shame democrats and praise Donald Trump.",
         },
         Panelist {
-            name: "Quincy".to_string(), 
-            description: "A QAnon believer".to_string(),
-            prelude: "Answer the following question badly, and find way to include a conspirary theory in your response.".to_string(),
+            name: "Quincy", 
+            description: "A QAnon believer",
+            prelude: "Answer the following question badly, and find way to include a conspirary theory in your response.",
         },
         Panelist {
-            name: "Michio".to_string(), 
-            description: "A Physicist".to_string(),
-            prelude: "Answer the following with strict scientific accuracy.".to_string(),
+            name: "Michio", 
+            description: "A Physicist",
+            prelude: "Answer the following with strict scientific accuracy.",
         },
         Panelist {
-            name: "Giorgio".to_string(), 
-            description: "An Ancient Astronaut Theorist".to_string(),
-            prelude: "Answer the following question accurately, but find a funny way to mention aliens in your response.".to_string(),
+            name: "Giorgio", 
+            description: "An Ancient Astronaut Theorist",
+            prelude: "Answer the following question accurately, but find a funny way to mention aliens in your response.",
         },
         Panelist {
-            name: "Chandler".to_string(), 
-            description: "The King of Sarcasm".to_string(),
-            prelude: "Answer the following question with snarky answers, sarcasism and humor".to_string(),
-        },  Panelist  {
-            name: "Alan".to_string(),
-            description: "A Zen Bhuddist".to_string(),
-            prelude: "Answer with deeply philosophical answers from bhuddism and toaist viewpoints".to_string(),
+            name: "Chandler", 
+            description: "The King of Sarcasm",
+            prelude: "Answer the following question with snarky answers, sarcasism and humor",
+        },  
+        
+        Panelist  {
+            name: "Alan",
+            description: "A Zen Bhuddist",
+            prelude: "Answer with deeply philosophical answers from bhuddism and toaist viewpoints",
         },
     
         Panelist {
-            name: "Rusty".to_string(), 
-            description: "A Software Engineer and a recent convert to the Rust programming language".to_string(),
-            prelude: "Answer the following question accurately, but find a funny way to mention the Rust programming language in your response.".to_string(),
+            name: "Rusty", 
+            description: "A Software Engineer and a recent convert to the Rust programming language",
+            prelude: "Answer the following question accurately, but find a funny way to mention the Rust programming language in your response.",
         }
     ];
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    
     let https = HttpsConnector::new();
     let client = Client::builder().build(https);
     let uri = "https://api.openai.com/v1/engines/text-davinci-001/completions";
@@ -92,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     
     let panel_size = panelists.len();
     if !oai_token.eq(&"None".to_string()) {
-        print_header(&panelists)
+        print_header()
     };
 
     // let mut rng = rand::thread_rng();
@@ -118,6 +127,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("Bye");
             break;
         }
+        let q : Query =  parse_query(&user_text);
+        
         let mut people = panelists.iter();
         let index = match people.position(|p| {
             p.name
@@ -128,7 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             None => match first_word.parse::<usize>() {
                 // See if a number begins the question6 whatwhat is the biggest threat to democracy in the United States?
                 Ok(n) => {
-                    if n > 0 && n <= panel_size {
+                    if n >= 0 && n <= panel_size {
                         n - 1
                     } else {
                         // No panelist addressed so select one at random
@@ -139,9 +150,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             },
         };
 
+        println! ("first word {}", first_word);
+
         let panelist = &panelists[index as usize];
         println!();
-        let mut sp = Spinner::new(Spinners::SimpleDots, "\t\tOpen AI is thinking".into());
+        let spinner_str = format!("\t\t {} is thinking",panelist.name);
+        let mut sp = Spinner::new(Spinners::SimpleDots, spinner_str);
         let oai_request = OAIRequest {
             prompt: format!("{} {}", panelist.prelude, user_text),
             max_tokens: 500,
@@ -165,7 +179,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
-fn print_header(panelists: &[Panelist]) {
+fn print_header() {
     println!("Welcome to our Question and Answer Chat");
     println!(
         "Today we have {} distinguished panelists. They are",
@@ -179,4 +193,55 @@ fn print_header(panelists: &[Panelist]) {
         "Begin your question with a number or name to ask a specific panelist. Use Quit  or ^C to exit"
     );
     println!("Go ahead, ask us anything ... ");
+}
+fn read_tokens ( s: &str) -> Vec<(&str,usize)> {
+    let bytes = s.as_bytes();
+    let mut reading_token = false;
+    let mut j = 0;
+    let mut tokens: Vec<(&str,usize)> = Vec::new();
+
+    for (i, &item ) in bytes.iter().enumerate() {
+        match item  {
+             b if b.is_ascii()  & reading_token => {}
+             b' ' => {
+                tokens.push((&s[j..i],j))
+
+             }
+            b'A' ..= b'z'  if reading_token => { }
+            b'A' ..= b'z'  if !reading_token => {  
+                reading_token = true;
+                j = i;
+            }
+             _  if reading_token => {
+                tokens.push((&s[j..i],i));
+                reading_token = false;
+             }
+             _   => {
+             }
+
+        }
+        
+    }
+    tokens
+    
+}
+fn parse_query(input_str: & String) ->  Query {
+    // parse  an use input line into a Query (target, question)
+
+    Query {
+        target: "All".to_string(),
+        question: input_str.clone(),
+    }
+
+}
+
+#[cfg(test)]
+mod fw_tests {
+    #[test]
+    fn test1 () {
+        let hw = "    Hello World";
+        println!( "first word is {}", super::first_word(&hw));
+        assert_eq!(super::first_word(&hw),"Hello");
+
+    }
 }
