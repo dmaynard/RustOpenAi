@@ -5,7 +5,9 @@ use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 use spinners::{Spinner, Spinners};
 use std::env;
+use std::f32::consts::E;
 use std::io::{stdin, stdout, Write};
+
 #[derive(Debug)]
 struct Query {
     target: String,
@@ -38,7 +40,7 @@ struct OAIRequest {
     prompt: String,
     max_tokens: u32,
 }
-static panelists : [Panelist; 8] = [
+static PANELISTS : [Panelist; 8] = [
          Panelist {
             name: "Rachel", 
             description: "An MSNBC host",
@@ -99,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let auth_header_val = format!("Bearer {}", oai_token);
     
-    let panel_size = panelists.len();
+    let panel_size = PANELISTS.len();
     if !oai_token.eq(&"None".to_string()) {
         print_header()
     };
@@ -129,7 +131,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         let q : Query =  parse_query(&user_text);
         
-        let mut people = panelists.iter();
+        let mut people = PANELISTS.iter();
         let index = match people.position(|p| {
             p.name
                 .to_ascii_uppercase()
@@ -152,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         println! ("first word {}", first_word);
 
-        let panelist = &panelists[index as usize];
+        let panelist = &PANELISTS[index as usize];
         println!();
         let spinner_str = format!("\t\t {} is thinking",panelist.name);
         let mut sp = Spinner::new(Spinners::SimpleDots, spinner_str);
@@ -183,9 +185,9 @@ fn print_header() {
     println!("Welcome to our Question and Answer Chat");
     println!(
         "Today we have {} distinguished panelists. They are",
-        panelists.len()
+        PANELISTS.len()
     );
-    for (i, p) in panelists.iter().enumerate() {
+    for (i, p) in PANELISTS.iter().enumerate() {
         println!("{}: {}, {} ", i + 1, p.name, p.description);
     }
 
@@ -194,30 +196,47 @@ fn print_header() {
     );
     println!("Go ahead, ask us anything ... ");
 }
+enum CharClass {
+    Digit,
+    Alphabetic,
+    Other,
+}
+fn char_class ( c: u8) -> CharClass {
+    match c {
+        b'A' ..= b'Z' | b'a' ..=b'z' =>  CharClass::Alphabetic,
+        b'0' ..= b'9' => CharClass::Digit,
+        _ => CharClass::Other
+
+    }
+}
 fn read_tokens ( s: &str) -> Vec<(&str,usize)> {
     let bytes = s.as_bytes();
-    let mut reading_token = false;
+    let mut reading_name = false;
+    let mut reading_number: bool = false;
     let mut j = 0;
     let mut tokens: Vec<(&str,usize)> = Vec::new();
 
     for (i, &item ) in bytes.iter().enumerate() {
-        match item  {
-             b if b.is_ascii()  & reading_token => {}
-             b' ' => {
-                tokens.push((&s[j..i],j))
-
-             }
-            b'A' ..= b'z'  if reading_token => { }
-            b'A' ..= b'z'  if !reading_token => {  
-                reading_token = true;
+        match  char_class(item) {
+            CharClass::Digit if reading_number  => { },
+            CharClass::Digit if !reading_number  && !reading_name => {j = i; reading_number = true;},
+            CharClass::Alphabetic  if reading_name=> { },
+            CharClass::Alphabetic if !reading_name   && !reading_number => {j = i; reading_name = true;},
+            CharClass::Other  => {
+                if reading_name {
+                    tokens.push((&s[j..i],j));
+                // println!("found name {} j {} i {} ",&s[j..i],j,i);
+                reading_name = false;};
+                if reading_number {
+                    tokens.push((&s[j..i],j));
+                // println!("found number {} j {} i {} ",&s[j..i],j,i);
+                reading_number = false;}
                 j = i;
-            }
-             _  if reading_token => {
-                tokens.push((&s[j..i],i));
-                reading_token = false;
-             }
-             _   => {
-             }
+                
+
+             },
+            
+            _ => {}
 
         }
         
@@ -235,13 +254,60 @@ fn parse_query(input_str: & String) ->  Query {
 
 }
 
+fn is_panelist ( s :  &str )  -> bool {
+    match PANELISTS.iter().find (|&x| x.name.to_ascii_lowercase() == s.to_ascii_lowercase()) {
+        Some(p) => true,
+        None => false
+    }
+
+}
+fn get_panelist ( s : &str)-> &Panelist {
+    match PANELISTS.iter().find (|&x| x.name.to_ascii_lowercase() == s.to_ascii_lowercase()) {
+        Some(p) => p,
+        None => panic!("Panelist {} not found", s)
+    }
+}
+
+fn is_panelist_number ( s : &str ) -> bool {
+    match &s.parse::<i32>() {
+        Ok (n) => {
+           n >&0 && n <= &(PANELISTS.len() as i32)
+        },
+        Err(e) => false
+
+    }
+}
+
 #[cfg(test)]
 mod fw_tests {
+    use crate::{read_tokens, PANELISTS, is_panelist, is_panelist_number};
+
     #[test]
-    fn test1 () {
-        let hw = "    Hello World";
-        println!( "first word is {}", super::first_word(&hw));
-        assert_eq!(super::first_word(&hw),"Hello");
+    // fn test1 () {
+    //     let hw = "    Hello World";
+    //     println!( "first word is {}", super::first_word(&hw));
+    //     assert_eq!(super::first_word(&hw),"Hello");
+
+    // }
+    #[test]
+    fn test2 () {
+        let test_tokens = "Rachel 1 9 alan what does it all mean";
+       //  println!("test_tokens {} ", test_tokens);
+        let queries = read_tokens(test_tokens);
+        // println!("{} tokens returned", queries.len());
+        // for (q, i ) in queries {
+        //     println! ( "token  {}" ,q)
+        // }
+        let r = 
+         PANELISTS.iter().find (|&x| x.name.to_ascii_lowercase() == "Rachel".to_ascii_lowercase()).unwrap();
+         println!(" found panelist {:?}", r);
+        assert!(is_panelist("rAcHel"));
+        assert!(!is_panelist("x"));
+        assert!(!is_panelist_number("0"));
+        assert!(!is_panelist_number("9"));
+        assert!(is_panelist_number("8"));
+        assert!(is_panelist_number("1"));
+        assert!(!is_panelist_number("Rachel"));
 
     }
 }
