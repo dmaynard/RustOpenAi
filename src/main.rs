@@ -7,6 +7,7 @@ use spinners::{Spinner, Spinners};
 use std::env;
 use std::f32::consts::E;
 use std::io::{stdin, stdout, Write};
+use std::collections::HashSet;
 
 #[derive(Debug)]
 struct Query {
@@ -141,7 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             None => match first_word.parse::<usize>() {
                 // See if a number begins the question6 whatwhat is the biggest threat to democracy in the United States?
                 Ok(n) => {
-                    if n >= 0 && n <= panel_size {
+                    if  n <= panel_size {
                         n - 1
                     } else {
                         // No panelist addressed so select one at random
@@ -209,12 +210,15 @@ fn char_class ( c: u8) -> CharClass {
 
     }
 }
-fn read_tokens ( s: &str) -> Vec<(&str,usize)> {
+fn read_tokens <'a>( which : &mut HashSet<&'a str>, s: &'a str) -> usize {
     let bytes = s.as_bytes();
     let mut reading_name = false;
     let mut reading_number: bool = false;
-    let mut j = 0;
-    let mut tokens: Vec<(&str,usize)> = Vec::new();
+    let mut j = 0; // start index of the current token
+    let mut imax = 0; // where the list of people to ask ends, and thereal question begins.
+    let all_str = "ALL";
+    which.drain();
+    if s.starts_with("Quit") || s.starts_with("QUIT" )  || s.starts_with("QUIT" ) { return 0};
 
     for (i, &item ) in bytes.iter().enumerate() {
         match  char_class(item) {
@@ -224,13 +228,33 @@ fn read_tokens ( s: &str) -> Vec<(&str,usize)> {
             CharClass::Alphabetic if !reading_name   && !reading_number => {j = i; reading_name = true;},
             CharClass::Other  => {
                 if reading_name {
-                    tokens.push((&s[j..i],j));
+                   // if (&s[j..i]).eq("Quit") {};
+                   println!("huh  {}:{}",&s[j..i], (&s[j..i]).to_uppercase().trim());
+                   if (&s[j..i]).to_uppercase().trim().eq(all_str) {
+                    for (idx, p) in PANELISTS.iter().enumerate() {
+                        which.insert(p.name); imax = i;
+                    }
+                
+                    }
+                   if is_panelist (&s[j..i]) {which.insert(&s[j..i]); imax = i;}
+                   else { break}
                 // println!("found name {} j {} i {} ",&s[j..i],j,i);
-                reading_name = false;};
+                reading_name = false;
+                };
                 if reading_number {
-                    tokens.push((&s[j..i],j));
+                    match is_panelist_number (&s[j..i]) {
+                        Some(n) => {
+                            which.insert(PANELISTS[n].name);
+                            imax = i;
+                            reading_number = false;
+                        },
+                        None => {break}
+
+                    }
+        
                 // println!("found number {} j {} i {} ",&s[j..i],j,i);
-                reading_number = false;}
+                reading_number = false;
+            }
                 j = i;
                 
 
@@ -241,7 +265,7 @@ fn read_tokens ( s: &str) -> Vec<(&str,usize)> {
         }
         
     }
-    tokens
+   imax
     
 }
 fn parse_query(input_str: & String) ->  Query {
@@ -268,21 +292,22 @@ fn get_panelist ( s : &str)-> &Panelist {
     }
 }
 
-fn is_panelist_number ( s : &str ) -> bool {
-    match &s.parse::<i32>() {
+fn is_panelist_number ( s : &str ) -> Option<usize> {
+    match &s.parse::<usize>() {
         Ok (n) => {
-           n >&0 && n <= &(PANELISTS.len() as i32)
+           if n >&0 && n <= &(PANELISTS.len()) {Some(n-1)} else {None}
         },
-        Err(e) => false
+        Err(_e) => None
 
     }
 }
 
 #[cfg(test)]
 mod fw_tests {
+    use std::collections::HashSet;
     use crate::{read_tokens, PANELISTS, is_panelist, is_panelist_number};
 
-    #[test]
+    // #[test]
     // fn test1 () {
     //     let hw = "    Hello World";
     //     println!( "first word is {}", super::first_word(&hw));
@@ -291,9 +316,23 @@ mod fw_tests {
     // }
     #[test]
     fn test2 () {
-        let test_tokens = "Rachel 1 9 alan what does it all mean";
+        let test_inputs = vec!("Rachel 1 3 alan what does it all mean",
+        "rachel tucker 5 This is the question",
+        "Quit"," all what do you tink of global warming?"
+     );
        //  println!("test_tokens {} ", test_tokens);
-        let queries = read_tokens(test_tokens);
+        let  mut who: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
+        
+        let mut question_start = 0;
+        for input in   test_inputs {
+            println! ("input:{input}");
+            question_start = read_tokens(&mut who, input);
+            println! (" Question: {}", &input[question_start..]);
+            for x in who.iter() {
+                println!("{x}");
+            }
+        }
+       
         // println!("{} tokens returned", queries.len());
         // for (q, i ) in queries {
         //     println! ( "token  {}" ,q)
@@ -303,11 +342,13 @@ mod fw_tests {
          println!(" found panelist {:?}", r);
         assert!(is_panelist("rAcHel"));
         assert!(!is_panelist("x"));
-        assert!(!is_panelist_number("0"));
-        assert!(!is_panelist_number("9"));
-        assert!(is_panelist_number("8"));
-        assert!(is_panelist_number("1"));
-        assert!(!is_panelist_number("Rachel"));
+        assert_eq!(is_panelist_number("0"),None);
+        assert_eq!(is_panelist_number("9"),None);
+        assert_eq!(is_panelist_number("8"),Some(7));
+        assert_eq!(is_panelist_number("1"),Some(0));
+        assert_eq!(is_panelist_number("2"),Some(1));
+        
+
 
     }
 }
