@@ -237,7 +237,11 @@ fn read_tokens <'a>( which : &mut HashSet<&'a str>, s: &'a str) -> usize {
                 
                     }
                    if is_panelist (&s[j..i]) {which.insert(&s[j..i]); imax = i;}
-                   else { break}
+                   else { if which.is_empty() { // No panelist specified. Pick 1 or 2 at random
+                        which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
+                        which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
+                    break;}
+                    }
                 // println!("found name {} j {} i {} ",&s[j..i],j,i);
                 reading_name = false;
                 };
@@ -318,7 +322,8 @@ mod fw_tests {
     fn test2 () {
         let test_inputs = vec!("Rachel 1 3 alan what does it all mean",
         "rachel tucker 5 This is the question",
-        "Quit"," all what do you tink of global warming?"
+        "Quit"," all what do you tink of global warming?",
+        "Why is the sky blue?",
      );
        //  println!("test_tokens {} ", test_tokens);
         let  mut who: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
