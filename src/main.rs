@@ -108,10 +108,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     // let mut rng = rand::thread_rng();
+    let mut question_start = 0;
 
     let quit_str = "QUIT";
+    let  mut responders: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
+   
 
     loop {
+        let  mut responders: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
+        let mut user_text = String::new();
         if oai_token.eq(no_token) {
             println!("You need to have a valid OpenAi auth token stored in an environment variable named {} to run this application", oai_token_key);
             println!("see https://openai.com/api/ for details");
@@ -119,49 +124,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         };
         print!(">");
         stdout().flush().unwrap();
-        let mut user_text = String::new();
+        // let mut user_text = String::new();
+
 
         stdin()
             .read_line(&mut user_text)
             .expect("Failed to read line");
-        let first_word = &user_text.split(' ').next().unwrap();
+        //let first_word = &user_text.split(' ').next().unwrap();
         // println!("first word is {}".to_string, first_word);
-        if first_word.to_uppercase().trim().eq(quit_str) {
-            println!("Bye");
-            break;
+        // let input = user_text;
+        // if first_word.to_uppercase().trim().eq(quit_str) {
+        //     println!("Bye");
+        //     break;
+        // };
+        
+        let question_start = read_tokens(&mut responders, &user_text);
+       
+        for x in responders.iter() {
+            println!("{x}");
         }
-        let q : Query =  parse_query(&user_text);
+        // let q : Query =  parse_query(&user_text);
         
         let mut people = PANELISTS.iter();
-        let index = match people.position(|p| {
-            p.name
-                .to_ascii_uppercase()
-                .eq(&first_word.to_ascii_uppercase())
-        }) {
-            Some(n) => n, // A panelists name was detected
-            None => match first_word.parse::<usize>() {
-                // See if a number begins the question6 whatwhat is the biggest threat to democracy in the United States?
-                Ok(n) => {
-                    if  n <= panel_size {
-                        n - 1
-                    } else {
-                        // No panelist addressed so select one at random
-                        rand::thread_rng().gen_range(0..panel_size) as usize
-                    }
-                }
-                Err(_e) => rand::thread_rng().gen_range(0..panel_size),
-            },
-        };
+        // let index = match people.position(|p| {
+        //     p.name
+        //         .to_ascii_uppercase()
+        //         .eq(&first_word.to_ascii_uppercase())
+        // }) {
+        //     Some(n) => n, // A panelists name was detected
+        //     None => match first_word.parse::<usize>() {
+        //         // See if a number begins the question6 whatwhat is the biggest threat to democracy in the United States?
+        //         Ok(n) => {
+        //             if  n <= panel_size {
+        //                 n - 1
+        //             } else {
+        //                 // No panelist addressed so select one at random
+        //                 rand::thread_rng().gen_range(0..panel_size) as usize
+        //             }
+        //         }
+        //         Err(_e) => rand::thread_rng().gen_range(0..panel_size),
+        //     },
+        // };
 
-        println! ("first word {}", first_word);
+        // // println! ("first word {}", first_word);
 
-        let panelist = &PANELISTS[index as usize];
+        let panelist = &PANELISTS[1];
         println!();
         let spinner_str = format!("\t\t {} is thinking",panelist.name);
         let mut sp = Spinner::new(Spinners::SimpleDots, spinner_str);
         let oai_request = OAIRequest {
-            prompt: format!("{} {}", panelist.prelude, user_text),
-            max_tokens: 500,
+            prompt: format!("{} {}", panelist.prelude, &user_text[question_start..]),
+            max_tokens: 1000,
         };
 
         let body = Body::from(serde_json::to_vec(&oai_request)?);
@@ -229,7 +242,7 @@ fn read_tokens <'a>( which : &mut HashSet<&'a str>, s: &'a str) -> usize {
             CharClass::Other  => {
                 if reading_name {
                    // if (&s[j..i]).eq("Quit") {};
-                   println!("huh  {}:{}",&s[j..i], (&s[j..i]).to_uppercase().trim());
+                   // println!("huh  {}:{}",&s[j..i], (&s[j..i]).to_uppercase().trim());
                    if (&s[j..i]).to_uppercase().trim().eq(all_str) {
                     for (idx, p) in PANELISTS.iter().enumerate() {
                         which.insert(p.name); imax = i;
