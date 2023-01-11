@@ -5,10 +5,10 @@ use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 use spinners::{Spinner, Spinners};
 use std::ascii::AsciiExt;
+use std::collections::HashSet;
 use std::env;
 use std::f32::consts::E;
 use std::io::{stdin, stdout, Write};
-use std::collections::HashSet;
 
 #[derive(Debug)]
 struct Query {
@@ -88,7 +88,6 @@ static PANELISTS : [Panelist; 8] = [
     ];
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    
     let https = HttpsConnector::new();
     let client = Client::builder().build(https);
     let uri = "https://api.openai.com/v1/engines/text-davinci-001/completions";
@@ -102,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     let auth_header_val = format!("Bearer {}", oai_token);
-    
+
     let panel_size = PANELISTS.len();
     if !oai_token.eq(&"None".to_string()) {
         print_header()
@@ -112,11 +111,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut question_start = 0;
 
     let quit_str = "QUIT";
-    let  mut responders: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
-   
+    let mut responders: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
 
     loop {
-        let  mut responders: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
+        let mut responders: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
         let mut user_text = String::new();
         if oai_token.eq(no_token) {
             println!("You need to have a valid OpenAi auth token stored in an environment variable named {} to run this application", oai_token_key);
@@ -126,7 +124,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         print!(">");
         stdout().flush().unwrap();
         // let mut user_text = String::new();
-
 
         stdin()
             .read_line(&mut user_text)
@@ -138,60 +135,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         //     println!("Bye");
         //     break;
         // };
-        
+
         let question_start = read_tokens(&mut responders, &user_text);
-       
+
         for x in responders.iter() {
             println!("{x}");
         }
         println!("Question: {}", &user_text[question_start..]);
-        // let q : Query =  parse_query(&user_text);
-        
-        let mut people = PANELISTS.iter();
-        // let index = match people.position(|p| {
-        //     p.name
-        //         .to_ascii_uppercase()
-        //         .eq(&first_word.to_ascii_uppercase())
-        // }) {
-        //     Some(n) => n, // A panelists name was detected
-        //     None => match first_word.parse::<usize>() {
-        //         // See if a number begins the question6 whatwhat is the biggest threat to democracy in the United States?
-        //         Ok(n) => {
-        //             if  n <= panel_size {
-        //                 n - 1
-        //             } else {
-        //                 // No panelist addressed so select one at random
-        //                 rand::thread_rng().gen_range(0..panel_size) as usize
-        //             }
-        //         }
-        //         Err(_e) => rand::thread_rng().gen_range(0..panel_size),
-        //     },
-        // };
 
-        // // println! ("first word {}", first_word);
+        for person in responders.iter() {
+            println!("{person}");
+            let panelist = PANELISTS
+                .iter()
+                .find(|&x| x.name.to_ascii_lowercase() == person.to_ascii_lowercase())
+                .expect("Missing Panelist");
+            println!("Panelist: {}", panelist.name);
 
-        let panelist = &PANELISTS[1];
-        println!();
-        let spinner_str = format!("\t\t {} is thinking",panelist.name);
-        let mut sp = Spinner::new(Spinners::SimpleDots, spinner_str);
-        let oai_request = OAIRequest {
-            prompt: format!("{} {}", panelist.prelude, &user_text[question_start..]),
-            max_tokens: 1000,
-        };
+            println!();
+            let spinner_str = format!("\t\t {} is thinking", panelist.name);
+            let mut sp = Spinner::new(Spinners::SimpleDots, spinner_str);
+            let oai_request = OAIRequest {
+                prompt: format!("{} {}", panelist.prelude, &user_text[question_start..]),
+                max_tokens: 1000,
+            };
 
-        let body = Body::from(serde_json::to_vec(&oai_request)?);
+            let body = Body::from(serde_json::to_vec(&oai_request)?);
 
-        let req = Request::post(uri)
-            .header(header::CONTENT_TYPE, "application/json")
-            .header("Authorization", &auth_header_val)
-            .body(body)
-            .unwrap();
-        let res = client.request(req).await?;
-        let body = hyper::body::aggregate(res).await?;
-        let json: OAIResponse = serde_json::from_reader(body.reader())?;
-        sp.stop();
-        println!();
-        println!("{}: {}", panelist.name, &json.choices[0].text[1..]);
+            let req = Request::post(uri)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header("Authorization", &auth_header_val)
+                .body(body)
+                .unwrap();
+            let res = client.request(req).await?;
+            let body = hyper::body::aggregate(res).await?;
+            let json: OAIResponse = serde_json::from_reader(body.reader())?;
+            sp.stop();
+            println!();
+            println!("{}: {}", panelist.name, &json.choices[0].text[1..]);
+        }
     }
 
     Ok(())
@@ -217,15 +198,14 @@ enum CharClass {
     Alphabetic,
     Other,
 }
-fn char_class ( c: u8) -> CharClass {
+fn char_class(c: u8) -> CharClass {
     match c {
-        b'A' ..= b'Z' | b'a' ..=b'z' =>  CharClass::Alphabetic,
-        b'0' ..= b'9' => CharClass::Digit,
-        _ => CharClass::Other
-
+        b'A'..=b'Z' | b'a'..=b'z' => CharClass::Alphabetic,
+        b'0'..=b'9' => CharClass::Digit,
+        _ => CharClass::Other,
     }
 }
-fn read_tokens <'a>( which : &mut HashSet<&'a str>, s: &'a str) -> usize {
+fn read_tokens<'a>(which: &mut HashSet<&'a str>, s: &'a str) -> usize {
     let bytes = s.as_bytes();
     let mut reading_name = false;
     let mut reading_number: bool = false;
@@ -233,108 +213,125 @@ fn read_tokens <'a>( which : &mut HashSet<&'a str>, s: &'a str) -> usize {
     let mut imax = 0; // where the list of people to ask ends, and thereal question begins.
     let all_str = "ALL";
     which.drain();
-    if s.starts_with("Quit") || s.starts_with("QUIT" )  || s.starts_with("QUIT" ) { return 0};
+    if s.starts_with("Quit") || s.starts_with("QUIT") || s.starts_with("QUIT") {
+        return 0;
+    };
 
-    for (i, &item ) in bytes.iter().enumerate() {
-        match  char_class(item) {
-            CharClass::Digit if reading_number  => { },
-            CharClass::Digit if !reading_number  && !reading_name => {j = i; reading_number = true;},
-            CharClass::Alphabetic  if reading_name=> { },
-            CharClass::Alphabetic if !reading_name   && !reading_number => {j = i; reading_name = true;},
-            CharClass::Other  => {
+    for (i, &item) in bytes.iter().enumerate() {
+        match char_class(item) {
+            CharClass::Digit if reading_number => {}
+            CharClass::Digit if !reading_number && !reading_name => {
+                j = i;
+                reading_number = true;
+            }
+            CharClass::Alphabetic if reading_name => {}
+            CharClass::Alphabetic if !reading_name && !reading_number => {
+                j = i;
+                reading_name = true;
+            }
+            CharClass::Other => {
                 if reading_name {
-                   // if (&s[j..i]).eq("Quit") {};
-                   // println!("huh  {}:{}",&s[j..i], (&s[j..i]).to_uppercase().trim());
-                   if (&s[j..i]).to_uppercase().trim().eq(all_str) {
-                    for (idx, p) in PANELISTS.iter().enumerate() {
-                        which.insert(p.name); imax = i;
-                    }
-                
-                    }
-                    match PANELISTS.iter().find (|&x|&s[j..i]== &(x.name.to_ascii_lowercase().to_string())) {
-                        Some(p) => {which.insert(p.name); imax = i;},
-                        None => { if which.is_empty() { // No panelist specified. Pick 1 or 2 at random
-                            which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
-                            which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
-                        break;}
+                    // if (&s[j..i]).eq("Quit") {};
+                    // println!("huh  {}:{}",&s[j..i], (&s[j..i]).to_uppercase().trim());
+                    if (&s[j..i]).to_uppercase().trim().eq(all_str) {
+                        for (idx, p) in PANELISTS.iter().enumerate() {
+                            which.insert(p.name);
+                            imax = i;
                         }
                     }
-
-                    
-                //    if is_panelist (&s[j..i]) {which.insert(&s[j..i]); imax = i;}
-                //    else { if which.is_empty() { // No panelist specified. Pick 1 or 2 at random
-                //         which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
-                //         which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
-                //     break;}
-                //     }
-                // println!("found name {} j {} i {} ",&s[j..i],j,i);
-                reading_name = false;
+                    match PANELISTS
+                        .iter()
+                        .find(|&x| &s[j..i] == &(x.name.to_ascii_lowercase().to_string()))
+                    {
+                        Some(p) => {
+                            which.insert(p.name);
+                            imax = i;
+                        }
+                        None => {
+                            if which.is_empty() {
+                                // No panelist specified. Pick 1 or 2 at random
+                                which.insert(
+                                    PANELISTS
+                                        [rand::thread_rng().gen_range(0..PANELISTS.len()) as usize]
+                                        .name,
+                                );
+                                which.insert(
+                                    PANELISTS
+                                        [rand::thread_rng().gen_range(0..PANELISTS.len()) as usize]
+                                        .name,
+                                );
+                                break;
+                            }
+                        }
+                    }
+                    reading_name = false;
                 };
                 if reading_number {
-                    match is_panelist_number (&s[j..i]) {
+                    match is_panelist_number(&s[j..i]) {
                         Some(n) => {
                             which.insert(PANELISTS[n].name);
                             imax = i;
                             reading_number = false;
-                        },
-                        None => {break}
-
+                        }
+                        None => break,
                     }
-        
-                // println!("found number {} j {} i {} ",&s[j..i],j,i);
-                reading_number = false;
-            }
+
+                    // println!("found number {} j {} i {} ",&s[j..i],j,i);
+                    reading_number = false;
+                }
                 j = i;
-                
+            }
 
-             },
-            
             _ => {}
-
         }
-        
     }
-   imax
-    
+    imax
 }
-fn parse_query(input_str: & String) ->  Query {
+fn parse_query(input_str: &String) -> Query {
     // parse  an use input line into a Query (target, question)
 
     Query {
         target: "All".to_string(),
         question: input_str.clone(),
     }
-
 }
 
-fn is_panelist ( s :  &str )  -> bool {
-    match PANELISTS.iter().find (|&x| x.name.to_ascii_lowercase() == s.to_ascii_lowercase()) {
+fn is_panelist(s: &str) -> bool {
+    match PANELISTS
+        .iter()
+        .find(|&x| x.name.to_ascii_lowercase() == s.to_ascii_lowercase())
+    {
         Some(p) => true,
-        None => false
+        None => false,
     }
-
 }
-fn get_panelist ( s : &str)-> &Panelist {
-    match PANELISTS.iter().find (|&x| x.name.to_ascii_lowercase() == s.to_ascii_lowercase()) {
+fn get_panelist(s: &str) -> &Panelist {
+    match PANELISTS
+        .iter()
+        .find(|&x| x.name.to_ascii_lowercase() == s.to_ascii_lowercase())
+    {
         Some(p) => p,
-        None => panic!("Panelist {} not found", s)
+        None => panic!("Panelist {} not found", s),
     }
 }
 
-fn is_panelist_number ( s : &str ) -> Option<usize> {
+fn is_panelist_number(s: &str) -> Option<usize> {
     match &s.parse::<usize>() {
-        Ok (n) => {
-           if n >&0 && n <= &(PANELISTS.len()) {Some(n-1)} else {None}
-        },
-        Err(_e) => None
-
+        Ok(n) => {
+            if n > &0 && n <= &(PANELISTS.len()) {
+                Some(n - 1)
+            } else {
+                None
+            }
+        }
+        Err(_e) => None,
     }
 }
 
 #[cfg(test)]
 mod fw_tests {
+    use crate::{is_panelist, is_panelist_number, read_tokens, PANELISTS};
     use std::collections::HashSet;
-    use crate::{read_tokens, PANELISTS, is_panelist, is_panelist_number};
 
     // #[test]
     // fn test1 () {
@@ -344,41 +341,42 @@ mod fw_tests {
 
     // }
     #[test]
-    fn test2 () {
-        let test_inputs = vec!("Rachel 1 3 alan what does it all mean",
-        "rachel tucker 5 This is the question",
-        "Quit"," all what do you tink of global warming?",
-        "Why is the sky blue?",
-     );
-       //  println!("test_tokens {} ", test_tokens);
-        let  mut who: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
-        
+    fn test2() {
+        let test_inputs = vec![
+            "Rachel 1 3 alan what does it all mean",
+            "rachel tucker 5 This is the question",
+            "Quit",
+            " all what do you tink of global warming?",
+            "Why is the sky blue?",
+        ];
+        //  println!("test_tokens {} ", test_tokens);
+        let mut who: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
+
         let mut question_start = 0;
-        for input in   test_inputs {
-            println! ("input:{input}");
+        for input in test_inputs {
+            println!("input:{input}");
             question_start = read_tokens(&mut who, input);
-            println! (" Question: {}", &input[question_start..]);
+            println!(" Question: {}", &input[question_start..]);
             for x in who.iter() {
                 println!("{x}");
             }
         }
-       
+
         // println!("{} tokens returned", queries.len());
         // for (q, i ) in queries {
         //     println! ( "token  {}" ,q)
         // }
-        let r = 
-         PANELISTS.iter().find (|&x| x.name.to_ascii_lowercase() == "Rachel".to_ascii_lowercase()).unwrap();
-         println!(" found panelist {:?}", r);
+        let r = PANELISTS
+            .iter()
+            .find(|&x| x.name.to_ascii_lowercase() == "Rachel".to_ascii_lowercase())
+            .unwrap();
+        println!(" found panelist {:?}", r);
         assert!(is_panelist("rAcHel"));
         assert!(!is_panelist("x"));
-        assert_eq!(is_panelist_number("0"),None);
-        assert_eq!(is_panelist_number("9"),None);
-        assert_eq!(is_panelist_number("8"),Some(7));
-        assert_eq!(is_panelist_number("1"),Some(0));
-        assert_eq!(is_panelist_number("2"),Some(1));
-        
-
-
+        assert_eq!(is_panelist_number("0"), None);
+        assert_eq!(is_panelist_number("9"), None);
+        assert_eq!(is_panelist_number("8"), Some(7));
+        assert_eq!(is_panelist_number("1"), Some(0));
+        assert_eq!(is_panelist_number("2"), Some(1));
     }
 }
