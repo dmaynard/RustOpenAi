@@ -4,6 +4,7 @@ use hyper_tls::HttpsConnector;
 use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 use spinners::{Spinner, Spinners};
+use std::ascii::AsciiExt;
 use std::env;
 use std::f32::consts::E;
 use std::io::{stdin, stdout, Write};
@@ -143,6 +144,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         for x in responders.iter() {
             println!("{x}");
         }
+        println!("Question: {}", &user_text[question_start..]);
         // let q : Query =  parse_query(&user_text);
         
         let mut people = PANELISTS.iter();
@@ -249,12 +251,22 @@ fn read_tokens <'a>( which : &mut HashSet<&'a str>, s: &'a str) -> usize {
                     }
                 
                     }
-                   if is_panelist (&s[j..i]) {which.insert(&s[j..i]); imax = i;}
-                   else { if which.is_empty() { // No panelist specified. Pick 1 or 2 at random
-                        which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
-                        which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
-                    break;}
+                    match PANELISTS.iter().find (|&x|&s[j..i]== &(x.name.to_ascii_lowercase().to_string())) {
+                        Some(p) => {which.insert(p.name); imax = i;},
+                        None => { if which.is_empty() { // No panelist specified. Pick 1 or 2 at random
+                            which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
+                            which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
+                        break;}
+                        }
                     }
+
+                    
+                //    if is_panelist (&s[j..i]) {which.insert(&s[j..i]); imax = i;}
+                //    else { if which.is_empty() { // No panelist specified. Pick 1 or 2 at random
+                //         which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
+                //         which.insert(PANELISTS[rand::thread_rng().gen_range(0..PANELISTS.len()) as usize].name);
+                //     break;}
+                //     }
                 // println!("found name {} j {} i {} ",&s[j..i],j,i);
                 reading_name = false;
                 };
