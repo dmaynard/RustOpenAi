@@ -72,14 +72,12 @@ static PANELISTS : [Panelist; 8] = [
             name: "Chandler", 
             description: "The King of Sarcasm",
             prelude: "Answer the following question with snarky answers, sarcasism and humor",
-        },  
-        
+        },
         Panelist  {
             name: "Alan",
             description: "A Zen Bhuddist",
             prelude: "Answer with deeply philosophical answers from bhuddism and toaist viewpoints",
         },
-    
         Panelist {
             name: "Rusty", 
             description: "A Software Engineer and a recent convert to the Rust programming language",
@@ -108,10 +106,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     // let mut rng = rand::thread_rng();
-    let mut question_start = 0;
+    let question_start = 0;
 
     let quit_str = "QUIT";
-    let mut responders: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
 
     loop {
         let mut responders: HashSet<&str> = HashSet::with_capacity(PANELISTS.len());
@@ -128,13 +125,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         stdin()
             .read_line(&mut user_text)
             .expect("Failed to read line");
-        //let first_word = &user_text.split(' ').next().unwrap();
-        // println!("first word is {}".to_string, first_word);
-        // let input = user_text;
-        // if first_word.to_uppercase().trim().eq(quit_str) {
-        //     println!("Bye");
-        //     break;
-        // };
+        if (user_text.trim().to_ascii_uppercase() == quit_str) {
+            println!("Bye");
+            break;
+        }
 
         let question_start = read_tokens(&mut responders, &user_text);
 
@@ -158,9 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 prompt: format!("{} {}", panelist.prelude, &user_text[question_start..]),
                 max_tokens: 1000,
             };
-
             let body = Body::from(serde_json::to_vec(&oai_request)?);
-
             let req = Request::post(uri)
                 .header(header::CONTENT_TYPE, "application/json")
                 .header("Authorization", &auth_header_val)
@@ -174,7 +166,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("{}: {}", panelist.name, &json.choices[0].text[1..]);
         }
     }
-
     Ok(())
 }
 
@@ -187,9 +178,8 @@ fn print_header() {
     for (i, p) in PANELISTS.iter().enumerate() {
         println!("{}: {}, {} ", i + 1, p.name, p.description);
     }
-
     println!(
-        "Begin your question with a number or name to ask a specific panelist. Use Quit  or ^C to exit"
+        "Begin your question with numbers or names to ask a specific panelist. Use Quit  or ^C to exit"
     );
     println!("Go ahead, ask us anything ... ");
 }
@@ -217,7 +207,7 @@ fn read_tokens<'a>(which: &mut HashSet<&'a str>, s: &'a str) -> usize {
         return 0;
     };
 
-    for (i, &item) in bytes.iter().enumerate() {
+    'outer: for (i, &item) in bytes.iter().enumerate() {
         match char_class(item) {
             CharClass::Digit if reading_number => {}
             CharClass::Digit if !reading_number && !reading_name => {
@@ -231,23 +221,23 @@ fn read_tokens<'a>(which: &mut HashSet<&'a str>, s: &'a str) -> usize {
             }
             CharClass::Other => {
                 if reading_name {
-                    // if (&s[j..i]).eq("Quit") {};
-                    // println!("huh  {}:{}",&s[j..i], (&s[j..i]).to_uppercase().trim());
-                    if (&s[j..i]).to_uppercase().trim().eq(all_str) {
-                        for (idx, p) in PANELISTS.iter().enumerate() {
+                    println!(" Reading name {}", &s[j..i]);
+                    if s[j..i].to_uppercase().trim().eq(all_str) {
+                        for p in PANELISTS.iter() {
                             which.insert(p.name);
                             imax = i;
                         }
                     }
                     match PANELISTS
                         .iter()
-                        .find(|&x| &s[j..i] == &(x.name.to_ascii_lowercase().to_string()))
+                        .find(|&x| &s[j..i].to_ascii_lowercase() == &(x.name.to_ascii_lowercase()))
                     {
                         Some(p) => {
                             which.insert(p.name);
                             imax = i;
                         }
                         None => {
+                            println!(" none for {}", &s[j..i]);
                             if which.is_empty() {
                                 // No panelist specified. Pick 1 or 2 at random
                                 which.insert(
@@ -260,8 +250,8 @@ fn read_tokens<'a>(which: &mut HashSet<&'a str>, s: &'a str) -> usize {
                                         [rand::thread_rng().gen_range(0..PANELISTS.len()) as usize]
                                         .name,
                                 );
-                                break;
                             }
+                            break 'outer;
                         }
                     }
                     reading_name = false;
@@ -287,33 +277,6 @@ fn read_tokens<'a>(which: &mut HashSet<&'a str>, s: &'a str) -> usize {
     }
     imax
 }
-fn parse_query(input_str: &String) -> Query {
-    // parse  an use input line into a Query (target, question)
-
-    Query {
-        target: "All".to_string(),
-        question: input_str.clone(),
-    }
-}
-
-fn is_panelist(s: &str) -> bool {
-    match PANELISTS
-        .iter()
-        .find(|&x| x.name.to_ascii_lowercase() == s.to_ascii_lowercase())
-    {
-        Some(p) => true,
-        None => false,
-    }
-}
-fn get_panelist(s: &str) -> &Panelist {
-    match PANELISTS
-        .iter()
-        .find(|&x| x.name.to_ascii_lowercase() == s.to_ascii_lowercase())
-    {
-        Some(p) => p,
-        None => panic!("Panelist {} not found", s),
-    }
-}
 
 fn is_panelist_number(s: &str) -> Option<usize> {
     match &s.parse::<usize>() {
@@ -330,7 +293,7 @@ fn is_panelist_number(s: &str) -> Option<usize> {
 
 #[cfg(test)]
 mod fw_tests {
-    use crate::{is_panelist, is_panelist_number, read_tokens, PANELISTS};
+    use crate::{is_panelist_number, read_tokens, PANELISTS};
     use std::collections::HashSet;
 
     // #[test]
@@ -361,18 +324,12 @@ mod fw_tests {
                 println!("{x}");
             }
         }
-
-        // println!("{} tokens returned", queries.len());
-        // for (q, i ) in queries {
-        //     println! ( "token  {}" ,q)
-        // }
         let r = PANELISTS
             .iter()
             .find(|&x| x.name.to_ascii_lowercase() == "Rachel".to_ascii_lowercase())
             .unwrap();
         println!(" found panelist {:?}", r);
-        assert!(is_panelist("rAcHel"));
-        assert!(!is_panelist("x"));
+
         assert_eq!(is_panelist_number("0"), None);
         assert_eq!(is_panelist_number("9"), None);
         assert_eq!(is_panelist_number("8"), Some(7));
