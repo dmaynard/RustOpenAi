@@ -4,7 +4,6 @@ use hyper_tls::HttpsConnector;
 use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 use spinners::{Spinner, Spinners};
-use std::ascii::AsciiExt;
 use std::collections::HashSet;
 use std::env;
 use std::f32::consts::E;
@@ -99,15 +98,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     let auth_header_val = format!("Bearer {}", oai_token);
-
-    let panel_size = PANELISTS.len();
     if !oai_token.eq(&"None".to_string()) {
         print_header()
     };
-
-    // let mut rng = rand::thread_rng();
-    let question_start = 0;
-
     let quit_str = "QUIT";
 
     loop {
@@ -125,26 +118,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         stdin()
             .read_line(&mut user_text)
             .expect("Failed to read line");
-        if (user_text.trim().to_ascii_uppercase() == quit_str) {
+        if user_text.trim().to_ascii_uppercase() == quit_str {
             println!("Bye");
             break;
         }
 
         let question_start = read_tokens(&mut responders, &user_text);
-
-        for x in responders.iter() {
-            println!("{x}");
-        }
         println!("Question: {}", &user_text[question_start..]);
-
         for person in responders.iter() {
-            println!("{person}");
             let panelist = PANELISTS
                 .iter()
                 .find(|&x| x.name.to_ascii_lowercase() == person.to_ascii_lowercase())
                 .expect("Missing Panelist");
-            println!("Panelist: {}", panelist.name);
-
             println!();
             let spinner_str = format!("\t\t {} is thinking", panelist.name);
             let mut sp = Spinner::new(Spinners::SimpleDots, spinner_str);
@@ -221,7 +206,6 @@ fn read_tokens<'a>(which: &mut HashSet<&'a str>, s: &'a str) -> usize {
             }
             CharClass::Other => {
                 if reading_name {
-                    println!(" Reading name {}", &s[j..i]);
                     if s[j..i].to_uppercase().trim().eq(all_str) {
                         for p in PANELISTS.iter() {
                             which.insert(p.name);
@@ -230,14 +214,13 @@ fn read_tokens<'a>(which: &mut HashSet<&'a str>, s: &'a str) -> usize {
                     }
                     match PANELISTS
                         .iter()
-                        .find(|&x| &s[j..i].to_ascii_lowercase() == &(x.name.to_ascii_lowercase()))
+                        .find(|&x| s[j..i].to_ascii_lowercase() == (x.name.to_ascii_lowercase()))
                     {
                         Some(p) => {
                             which.insert(p.name);
                             imax = i;
                         }
                         None => {
-                            println!(" none for {}", &s[j..i]);
                             if which.is_empty() {
                                 // No panelist specified. Pick 1 or 2 at random
                                 which.insert(
@@ -305,6 +288,7 @@ mod fw_tests {
     // }
     #[test]
     fn test2() {
+        let mut a: HashSet<&str> = vec!["Rachel", "Tucker", "Rusty"].into_iter().collect();
         let test_inputs = vec![
             "Rachel 1 3 alan what does it all mean",
             "rachel tucker 5 This is the question",
@@ -330,7 +314,15 @@ mod fw_tests {
             .unwrap();
         println!(" found panelist {:?}", r);
 
-        assert_eq!(is_panelist_number("0"), None);
+        question_start = read_tokens(
+            &mut who,
+            " tucker 8 rachel who won the 2020 presidential election?",
+        );
+        assert!(a == who);
+        who.drain();
+
+        question_start = read_tokens(&mut who, " 7 who won the 2020 presidential election?");
+        assert!(who == vec!["Alan"].into_iter().collect());
         assert_eq!(is_panelist_number("9"), None);
         assert_eq!(is_panelist_number("8"), Some(7));
         assert_eq!(is_panelist_number("1"), Some(0));
