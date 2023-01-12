@@ -74,7 +74,7 @@ static PANELISTS : [Panelist; 8] = [
         },
         Panelist  {
             name: "Alan",
-            description: "A Zen Bhuddist",
+            description: "A Zen Buddist",
             prelude: "Answer with deeply philosophical answers from bhuddism and toaist viewpoints",
         },
         Panelist {
